@@ -1,0 +1,89 @@
+name: Deploy Laravel Application
+
+on:
+  push: 
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.TOKEN_CD }}
+
+      - name: Build docker image
+        run: docker build -t ghcr.io/diegithub/laravel-back-expenses:latest .
+
+      - name: Publish image to GitHub Container Registry
+        run: docker push ghcr.io/diegithub/laravel-back-expenses:latest
+
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    env:
+      REPO_URL: https://github.com/diegithub/laravel-back-expenses
+      RUNNER_TOKEN: ${{ secrets.RUNNER_TOKEN }}
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.TOKEN_CD }}
+      
+      - name: Pull image from GitHub Container Registry
+        run: sudo docker pull ghcr.io/diegithub/laravel-back-expenses:latest
+      
+      - name: Stop and remove old container
+        run: sudo docker rm -f laravel-docker
+      
+      - name: Run docker container
+        # run: sudo docker run -d -p 9000:80 --name laravel-docker --network laravel-network ghcr.io/diegithub/laravel-back-expenses:latest
+        run: sudo docker run -d -p 9000:80 --name laravel-docker --network laravel-network \
+            -e DB_CONNECTION=mysql \
+            -e DB_HOST=mysql_db \
+            -e DB_PORT=3306 \
+            -e DB_DATABASE=${{ secrets.MYSQL_DATABASE }} \
+            -e DB_USERNAME=root \
+            -e DB_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
+            ghcr.io/diegithub/laravel-back-expenses:latest
+
+      - name: Start MySQL container
+        # run: |
+        #   sudo docker run -d --name mysql_db --network laravel-network -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=laravel_docker -p 3306:3306 mysql:latest
+        run: |
+          sudo docker run -d --name mysql_db --network laravel-network \
+            -e MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
+            -e MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }} \
+            -p 3306:3306 mysql:latest
+
+      - name: Start phpMyAdmin container
+        run: |
+          sudo docker run -d --name phpmyadmin --network laravel-network -p 9001:80 phpmyadmin:latest
+
+      - name: Wait for MySQL to be ready
+        # run: |
+        #   while ! sudo docker exec mysql_db mysqladmin --user=root --password=root --host "127.0.0.1" ping --silent &> /dev/null ; do
+        #     echo "Waiting for database connection..."
+        #     sleep 5
+        #   done
+        run: |
+          while ! sudo docker exec mysql_db mysqladmin --user=root --password=${{ secrets.MYSQL_ROOT_PASSWORD }} --host "127.0.0.1" ping --silent &> /dev/null ; do
+            echo "Waiting for database connection..."
+            sleep 5
+          done
+
+      - name: Run Laravel migrations
+        run: sudo docker exec laravel-docker php artisan migrate --force
