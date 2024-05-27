@@ -24,16 +24,16 @@ jobs:
           password: ${{ secrets.TOKEN_CD }}
 
       - name: Build docker image
-        run: docker build -t ghcr.io/diegithub/laravel-back-expenses:latest .
+        run: docker build -t ghcr.io/diegofernandodev/laravel-back-expenses:latest .
 
       - name: Publish image to GitHub Container Registry
-        run: docker push ghcr.io/diegithub/laravel-back-expenses:latest
+        run: docker push ghcr.io/diegofernandodev/laravel-back-expenses:latest
 
   deploy:
     needs: build
     runs-on: self-hosted
     env:
-      REPO_URL: https://github.com/diegithub/laravel-back-expenses
+      REPO_URL: https://github.com/diegofernandodev/laravel-back-expenses
       RUNNER_TOKEN: ${{ secrets.RUNNER_TOKEN }}
     steps:
       - name: Login to GitHub Container Registry
@@ -44,7 +44,7 @@ jobs:
           password: ${{ secrets.TOKEN_CD }}
       
       - name: Pull image from GitHub Container Registry
-        run: sudo docker pull ghcr.io/diegithub/laravel-back-expenses:latest
+        run: sudo docker pull ghcr.io/diegofernandodev/laravel-back-expenses:latest
       
       - name: Stop and remove old container
         run: sudo docker rm -f laravel-docker
@@ -58,7 +58,7 @@ jobs:
             -e DB_DATABASE=${{ secrets.MYSQL_DATABASE }} \
             -e DB_USERNAME=root \
             -e DB_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
-            ghcr.io/diegithub/laravel-back-expenses:latest
+            ghcr.io/diegofernandodev/laravel-back-expenses:latest
 
       - name: Start MySQL container
         # run: |
