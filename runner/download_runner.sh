@@ -18,3 +18,6 @@ tar xzf ./${RUNNER_ARCHIVE}
 
 # Eliminar el archivo tar
 rm ./${RUNNER_ARCHIVE}
+
+# Instalar dependencias del runner
+./bin/installdependencies.sh

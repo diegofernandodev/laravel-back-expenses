@@ -9,8 +9,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Instalar dependencias necesarias
 RUN apt-get update && apt-get install -y \
-    curl sudo git jq libicu66 && \
+    curl sudo git jq libicu66 gnupg lsb-release apt-transport-https ca-certificates software-properties-common && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Instalar Docker
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
+    add-apt-repository \
+    "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" && \
+    apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io
 
 # Crear un usuario para el runner
 RUN useradd -m runner && echo "runner:runner" | chpasswd && adduser runner sudo
@@ -28,6 +34,9 @@ RUN chmod +x /runner/download_runner.sh /runner/entrypoint.sh
 
 # Ejecutar el script de descarga
 RUN /runner/download_runner.sh
+
+# Instalar dependencias del runner
+RUN /runner/actions-runner/bin/installdependencies.sh
 
 # Cambiar al usuario runner
 USER runner
