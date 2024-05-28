@@ -23,6 +23,10 @@ RUN useradd -m runner && echo "runner:runner" | chpasswd && adduser runner sudo
 
 # Cambiar al usuario root
 USER root
+
+# Agregar el usuario al grupo docker
+RUN usermod -aG docker runner
+
 WORKDIR /runner
 
 # Copiar los scripts al contenedor
